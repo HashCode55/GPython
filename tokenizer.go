@@ -123,6 +123,9 @@ func lex(name, input string) (*lexer, chan token){
 }
 
 func (l *lexer) run() {
+	// Another method is to remove this and reinitiate by 
+	// simple switch case 
+	// Reference - https://github.com/golang/go/blob/master/src/go/scanner/scanner.go#L598-L761
 	for state := initState; state != nil; {
 		state = state(l)
 	} 
@@ -148,7 +151,7 @@ func (l *lexer) next() rune {
 		return eof 
 	}	
 	r, _ := utf8.DecodeRuneInString(l.input[l.pos:]) // throws out the next rune in the input string 
-	//l.width = Pos(w) // updates the current width TODO : this is fucked too
+	l.width = 1 // updates the current width TODO : this is fucked too
 	l.pos += 1
 	return r
 
@@ -159,12 +162,15 @@ func (l *lexer) backup() {
 }
 
 func initState(l *lexer) stateFunc { 	
+	sf := initState
 	switch ch := l.peek(); {
 		case isWhiteSpace(ch):
-			consumeSpace(l) // consume the white space 
+			sf = consumeSpace(l) // consume the white space 
+		case isLetter(ch):
+			sf = consumeName(l)	
 		// TODO make it recognize other things like names/numbers/letters 	
 	}
-	return nil // this is fucking hard coded 
+	return sf // this is fucking hard coded 
 }
 
 func consumeSpace(l *lexer) stateFunc {
@@ -175,7 +181,18 @@ func consumeSpace(l *lexer) stateFunc {
 	return initState
 }
 
+func consumeName(l *lexer) stateFunc {
+	for isLetter(l.peek()){
+		l.next()
+	}
+	l.emit(tokenName)
+	return nil
+} 
+
 func main() {
-	_, c := lex("test", "    ") // currently recognizing white space 
-	fmt.Printf("%v\n", -c)
+	_, c := lex("test", "   def") // currently recognizing white space 
+	for i := range c {
+		fmt.Printf("%v\n", i)	
+	}
+	
 }
