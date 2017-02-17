@@ -1,6 +1,9 @@
 package main 
 
-import "fmt"
+import (
+	"fmt"
+	"unicode/utf8"
+)
 // const token_names = []string[
 // 	   "NAME", 
 // 	   "NUMBER", 
@@ -75,9 +78,11 @@ type lexer struct {
 }
 
 const (
+	//TODO : pick from top level comment to implement more - line 165
 	tokenError tokenType = iota 
 	tokenNumber
 	tokenString 
+	tokenSpace 
 	tokenName
 )
 
@@ -89,15 +94,14 @@ const eof = -1
 //##########################//
 
 // pretty printing 
-func (t token) String() string {
-	switch t.typ {
-		case tokenEOF:
-			return "EOF"
-		case tokenError:
-			return t.val 		
-	}
-	return fmt.S
-}
+// func (t token) String() string {
+// 	switch t.typ {
+// 		case tokenEOF:
+// 			return "EOF"
+// 		case tokenError:
+// 			return t.val 		
+// 	}
+// }
 
 func isWhiteSpace(ch rune) bool {
 	return ch == ' ' || ch == '\t' || ch == '\n'
@@ -115,20 +119,20 @@ func lex(name, input string) (*lexer, chan token){
 		tokens : make(chan token), 
 	}
 	go l.run()
-	return l, l.items
+	return l, l.tokens
 }
 
 func (l *lexer) run() {
 	for state := initState; state != nil; {
 		state = state(l)
 	} 
-	close(l.items) // close the channel.
+	close(l.tokens) // close the channel.
 }
 
 // keeps on pushing to the channel 
 func (l *lexer) emit(t tokenType) {
 	l.tokens <- token{t, l.input[l.start : l.pos]}
-	l.start = l.pos 
+	l.start = l.pos // update the start pointer 
 }
 
 func (l *lexer) peek() rune {
@@ -139,25 +143,39 @@ func (l *lexer) peek() rune {
 
 func (l *lexer) next() rune {
 	// check if its end of file 
-	if l.pos > len(l.input) { 
+	if l.pos >= len(l.input) { 
 		l.width = 0
 		return eof 
 	}	
+	r, _ := utf8.DecodeRuneInString(l.input[l.pos:]) // throws out the next rune in the input string 
+	//l.width = Pos(w) // updates the current width TODO : this is fucked too
+	l.pos += 1
+	return r
 
 }
-func initState(l *lexer) stateFunc{ // checks what state it is and returns the corresponding function 
-	switch ch := l.peek(); ch {
+
+func (l *lexer) backup() {
+	l.pos -= l.width
+}
+
+func initState(l *lexer) stateFunc { 	
+	switch ch := l.peek(); {
 		case isWhiteSpace(ch):
-			// white space state 
-		case isLetter(ch):
-			// scan word state	
-
+			consumeSpace(l) // consume the white space 
+		// TODO make it recognize other things like names/numbers/letters 	
 	}
+	return nil // this is fucking hard coded 
 }
 
-
-
+func consumeSpace(l *lexer) stateFunc {
+	for isWhiteSpace(l.peek()) {
+		l.next()
+	}
+	l.emit(tokenSpace) // put the space type in the channel
+	return initState
+}
 
 func main() {
-	fmt.Printf("%v", itemNumber)
+	_, c := lex("test", "    ") // currently recognizing white space 
+	fmt.Printf("%v\n", -c)
 }
