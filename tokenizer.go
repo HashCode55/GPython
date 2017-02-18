@@ -84,33 +84,16 @@ const (
 	tokenString 
 	tokenSpace 
 	tokenName
+	tokenComma 
+
 )
 
 
 const eof = -1
 
 //##########################//
-//      THE REAL sHiT       //
+//     Lexer Definition     //
 //##########################//
-
-// pretty printing 
-// func (t token) String() string {
-// 	switch t.typ {
-// 		case tokenEOF:
-// 			return "EOF"
-// 		case tokenError:
-// 			return t.val 		
-// 	}
-// }
-
-func isWhiteSpace(ch rune) bool {
-	return ch == ' ' || ch == '\t' || ch == '\n'
-}
-
-func isLetter(ch rune) bool {
-	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')
-}
-
 
 func lex(name, input string) (*lexer, chan token){
 	l := &lexer{
@@ -161,36 +144,82 @@ func (l *lexer) backup() {
 	l.pos -= l.width
 }
 
+//##########################//
+//      THE REAL sHiT       //
+//##########################//
+
+// pretty printing 
+func (t token) String() string {
+	return fmt.Sprintf("<Type : %v Value : %v>\n", t.typ, t.val)
+}
+
+func isWhiteSpace(ch rune) bool {
+	return ch == ' ' || ch == '\t' || ch == '\n'
+}
+
+func isLetter(ch rune) bool {
+	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')
+}
+
+func isDigit(ch rune) bool {
+	return '0' <= ch && ch <= '9' 
+}
+
+func consumeSpace(l *lexer) stateFunc {
+
+	for isWhiteSpace(l.peek()) {
+		l.next()
+	}
+	l.emit(tokenSpace) // put the space type in the channel
+	if l.next() == eof {
+		return nil 
+	}
+	return initState
+}
+
+func scanIdentifier(l *lexer) stateFunc {
+	// an indentifier can contain a letter as well a digit
+	for isLetter(l.peek()) || isDigit(l.peek()){
+		l.next()
+	}
+	l.emit(tokenName)
+	// if we are done discovering return nil 
+	if l.next() == eof {
+		return nil 
+	}
+	return initState
+} 
+
+func scanNumber(l *lexer) stateFunc {
+	// currently only integers 
+	for isDigit(l.peek()){
+		l.next()
+	}
+	l.emit(tokenNumber)
+	if l.next() == eof {
+		return nil 
+	}
+	return initState
+}
+
 func initState(l *lexer) stateFunc { 	
 	sf := initState
 	switch ch := l.peek(); {
 		case isWhiteSpace(ch):
 			sf = consumeSpace(l) // consume the white space 
 		case isLetter(ch):
-			sf = consumeName(l)	
+			sf = scanIdentifier(l)	
+		case '0' <= ch && ch <= '9':
+			sf = scanNumber(l)	
+			
 		// TODO make it recognize other things like names/numbers/letters 	
 	}
 	return sf // this is fucking hard coded 
 }
 
-func consumeSpace(l *lexer) stateFunc {
-	for isWhiteSpace(l.peek()) {
-		l.next()
-	}
-	l.emit(tokenSpace) // put the space type in the channel
-	return initState
-}
-
-func consumeName(l *lexer) stateFunc {
-	for isLetter(l.peek()){
-		l.next()
-	}
-	l.emit(tokenName)
-	return nil
-} 
 
 func main() {
-	_, c := lex("test", "   def") // currently recognizing white space 
+	_, c := lex("test", "mehul 34") // currently recognizing white space 
 	for i := range c {
 		fmt.Printf("%v\n", i)	
 	}
