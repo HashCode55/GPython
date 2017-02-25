@@ -1,5 +1,5 @@
 ## ## ## ## [http://www.airs.com/blog/archives/38]
-The compiler takes the humaan readable code and converts it into assembly. 
+The compiler takes the human readable code and converts it into assembly. 
 The assembler converts assembly to object files... and these object files are clubbed into one executable using a linker.
 
 In the old days, when people used to handcraft assembly code, the assembler used to generate the executable file but when FORTRAN and COBOL came in everything changes and object files came into the play.
