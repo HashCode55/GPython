@@ -10,13 +10,15 @@ import (
 //    TYPE AND CONST DEFS   //
 //##########################//
 
+
 // this is to avoid lots of switch statements.
 // like this - https://blog.gopheracademy.com/advent-2014/parsers-lexers/
 type stateFunc func(*lexer) stateFunc
 
 // definition of a token 
 type token struct {
-	typ tokens.TokenType // this is a wrapper over the default int
+
+	typ tokens.TokenType// this is a wrapper over the default int
 	val string	
 }
 
@@ -100,7 +102,7 @@ func (t token) String() string {
 }
 
 func isWhiteSpace(ch rune) bool {
-	return ch == ' ' || ch == '\t' || ch == '\n'
+	return ch == ' ' || ch == '\n'
 }
 
 func isLetter(ch rune) bool {
@@ -139,13 +141,54 @@ func scanNumber(l *lexer) stateFunc {
 	return initState
 }
 
+func consumeLEGR(l * lexer, tok rune, 
+	tokenLR, 
+	tokenLGEqual, 
+	tokenLRShift tokens.TokenType) stateFunc {
+	/*
+	General function for handling bot '<' and '>'
+	related operators 
+	Left/Right shift is overriding Less/Greater
+	*/
+	nt := l.peek()
+	if nt == '=' {
+		l.next()
+		l.emit(tokenLGEqual)
+	}else if nt == tok { // for handling shift operators 
+		l.next()
+		l.emit(tokenLRShift)
+	}else {
+		l.emit(tokenLR)
+	}
+	return initState
+}
+
 func consumeGen(l *lexer) stateFunc{
-	ch := l.peek()
+	ch := l.peek();
 	l.next()
-	switch ch {
+	switch ch{
 		case ',':			
-			l.emit(tokens.TokenComma)				
-			
+			l.emit(tokens.TokenComma)	
+		case '{':			
+			l.emit(tokens.TokenLpar)
+		case '}':			
+			l.emit(tokens.TokenRpar)
+		case '+':			
+			l.emit(tokens.TokenPlus)
+		case '-':			
+			l.emit(tokens.TokenMinus)
+		case '*':
+			l.emit(tokens.TokenStar)
+		case '%':
+			l.emit(tokens.TokenPercent)
+		case '/':
+			l.emit(tokens.TokenSlash)	
+		case '\t':
+			l.emit(tokens.TokenIndent)	
+		case '<':
+			consumeLEGR(l, '<', tokens.TokenLess, tokens.TokenLessEqual, tokens.TokenLeftShift)
+		case '>':
+			consumeLEGR(l, '>', tokens.TokenGreater, tokens.TokenGreaterEqual, tokens.TokenRightShift)			
 	}	
 	return initState
 }
@@ -171,7 +214,7 @@ func initState(l *lexer) stateFunc {
 
 
 func main() {
-	_, c := lex("test", "meh , l") // currently recognizing white space 
+	_, c := lex("test", "<<>><=>=>><>") // currently recognizing white space 
 	for i := range c {
 		fmt.Printf("%v\n", i)	
 	}
