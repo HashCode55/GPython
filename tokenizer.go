@@ -123,6 +123,9 @@ func (l *lexer) emit(t tokenType) {
 
 func (l *lexer) peek() rune {
 	r := l.next()
+	if (r == eof) {
+		return eof
+	}
 	l.backup()
 	return r
 }
@@ -171,9 +174,7 @@ func consumeSpace(l *lexer) stateFunc {
 		l.next()
 	}
 	l.emit(tokenSpace) // put the space type in the channel
-	if l.next() == eof {
-		return nil 
-	}
+	
 	return initState
 }
 
@@ -182,11 +183,7 @@ func scanIdentifier(l *lexer) stateFunc {
 	for isLetter(l.peek()) || isDigit(l.peek()){
 		l.next()
 	}
-	l.emit(tokenName)
-	// if we are done discovering return nil 
-	if l.next() == eof {
-		return nil 
-	}
+	l.emit(tokenName)	
 	return initState
 } 
 
@@ -195,10 +192,16 @@ func scanNumber(l *lexer) stateFunc {
 	for isDigit(l.peek()){
 		l.next()
 	}
-	l.emit(tokenNumber)
-	if l.next() == eof {
-		return nil 
-	}
+	l.emit(tokenNumber)	
+	return initState
+}
+
+func consumeGen(l *lexer) stateFunc{
+	l.next()
+	switch ch := l.peek(); ch{
+		case ',':			
+			l.emit(tokenComma)	
+	}	
 	return initState
 }
 
@@ -210,7 +213,11 @@ func initState(l *lexer) stateFunc {
 		case isLetter(ch):
 			sf = scanIdentifier(l)	
 		case '0' <= ch && ch <= '9':
-			sf = scanNumber(l)	
+			sf = scanNumber(l)		
+		case ch == eof:	
+			return nil
+		default:
+			sf = consumeGen(l)	
 			
 		// TODO make it recognize other things like names/numbers/letters 	
 	}
@@ -219,7 +226,7 @@ func initState(l *lexer) stateFunc {
 
 
 func main() {
-	_, c := lex("test", "mehul 34") // currently recognizing white space 
+	_, c := lex("test", "mehul 34 , ") // currently recognizing white space 
 	for i := range c {
 		fmt.Printf("%v\n", i)	
 	}
