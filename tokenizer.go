@@ -3,59 +3,12 @@ package main
 import (
 	"fmt"
 	"unicode/utf8"
+	"./tokens"
 )
-// const token_names = []string[
-// 	   "NAME", 
-// 	   "NUMBER", 
-// 	   "STRING", 
-// 	   "LPAR",
-//     "RPAR",
-//     "COMMA",
-//     "PLUS",
-//     "MINUS",
-//     "STAR",
-//     "SLASH",
-//     "VBAR",
-//     "AMPER",
-//     "LESS",	
-//     "GREATER",
-//     "EQUAL",
-//     "DOT",
-//     "PERCENT",
-//     "EQEQUAL",
-//     "NOTEQUAL",
-//     "LESSEQUAL",
-//     "GREATEREQUAL",
-//     "TILDE",
-//     "CIRCUMFLEX",
-//     "LEFTSHIFT",
-//     "RIGHTSHIFT",
-//     "DOUBLESTAR",
-//     "PLUSEQUAL",
-//     "MINEQUAL",
-//     "STAREQUAL",
-//     "SLASHEQUAL",
-//     "PERCENTEQUAL",
-//     "AMPEREQUAL",
-//     "VBAREQUAL",
-//     "CIRCUMFLEXEQUAL",
-//     "LEFTSHIFTEQUAL",
-//     "RIGHTSHIFTEQUAL",
-//     "DOUBLESTAREQUAL",
-//     "DOUBLESLASH",
-//     "DOUBLESLASHEQUAL",
-//     "OP",
-//     "<ERRORTOKEN>",
-//     "<N_TOKENS>",
-//     "BACKTICK"
-// ]
 
 //##########################//
 //    TYPE AND CONST DEFS   //
 //##########################//
-
-// no fucking idea why
-type tokenType int 
 
 // this is to avoid lots of switch statements.
 // like this - https://blog.gopheracademy.com/advent-2014/parsers-lexers/
@@ -63,7 +16,7 @@ type stateFunc func(*lexer) stateFunc
 
 // definition of a token 
 type token struct {
-	typ tokenType // this is a wrapper over the default int
+	typ tokens.TokenType // this is a wrapper over the default int
 	val string	
 }
 
@@ -77,16 +30,6 @@ type lexer struct {
     tokens chan token // a channel for piping the token
 }
 
-const (
-	//TODO : pick from top level comment to implement more - line 165
-	tokenError tokenType = iota 
-	tokenNumber
-	tokenString 
-	tokenSpace 
-	tokenName
-	tokenComma 
-
-)
 
 
 const eof = -1
@@ -116,17 +59,17 @@ func (l *lexer) run() {
 }
 
 // keeps on pushing to the channel 
-func (l *lexer) emit(t tokenType) {
+func (l *lexer) emit(t tokens.TokenType) {
 	l.tokens <- token{t, l.input[l.start : l.pos]}
 	l.start = l.pos // update the start pointer 
 }
 
 func (l *lexer) peek() rune {
 	r := l.next()
+	l.backup()
 	if (r == eof) {
 		return eof
 	}
-	l.backup()
 	return r
 }
 
@@ -173,7 +116,7 @@ func consumeSpace(l *lexer) stateFunc {
 	for isWhiteSpace(l.peek()) {
 		l.next()
 	}
-	l.emit(tokenSpace) // put the space type in the channel
+	l.emit(tokens.TokenSpace) // put the space type in the channel
 	
 	return initState
 }
@@ -183,7 +126,7 @@ func scanIdentifier(l *lexer) stateFunc {
 	for isLetter(l.peek()) || isDigit(l.peek()){
 		l.next()
 	}
-	l.emit(tokenName)	
+	l.emit(tokens.TokenName)	
 	return initState
 } 
 
@@ -192,15 +135,17 @@ func scanNumber(l *lexer) stateFunc {
 	for isDigit(l.peek()){
 		l.next()
 	}
-	l.emit(tokenNumber)	
+	l.emit(tokens.TokenNumber)	
 	return initState
 }
 
 func consumeGen(l *lexer) stateFunc{
+	ch := l.peek()
 	l.next()
-	switch ch := l.peek(); ch{
+	switch ch {
 		case ',':			
-			l.emit(tokenComma)	
+			l.emit(tokens.TokenComma)				
+			
 	}	
 	return initState
 }
@@ -226,7 +171,7 @@ func initState(l *lexer) stateFunc {
 
 
 func main() {
-	_, c := lex("test", "mehul 34 , ") // currently recognizing white space 
+	_, c := lex("test", "meh , l") // currently recognizing white space 
 	for i := range c {
 		fmt.Printf("%v\n", i)	
 	}
