@@ -1,108 +1,107 @@
-package main 
+package gython
 
 import (
 	"fmt"
+	"strings"
 	"unicode/utf8"
-	"./tokens"
 )
 
 //##########################//
 //    TYPE AND CONST DEFS   //
 //##########################//
 
+// TODO: Error handling
 
 // this is to avoid lots of switch statements.
 // like this - https://blog.gopheracademy.com/advent-2014/parsers-lexers/
-type stateFunc func(*lexer) stateFunc
+//type stateFunc func(*lexer) stateFunc
 
-// definition of a token 
-type token struct {
-
-	typ tokens.TokenType// this is a wrapper over the default int
-	val string	
+// Token encapsulates a token using a type variable and
+// its value.
+type Token struct {
+	type_ TokenType // this is a wrapper over the default int
+	val   string
 }
 
 // mapping integers to the token types
 type lexer struct {
-	name   string 	  // for error reports 
-	input  string 	  // the string being scanner 
-	start  int    	  // the start state 
-	pos    int    	  // current position in input 
-	width  int        // width of last rune 
-    tokens chan token // a channel for piping the token
+	input  string     // the string being scanner
+	start  int        // the start state
+	pos    int        // current position in input
+	tokens chan Token // a channel for piping the token
 }
 
+const EOF = -1
 
-
-const eof = -1
+var DONE bool = false
 
 //##########################//
 //     Lexer Definition     //
 //##########################//
 
-func lex(name, input string) (*lexer, chan token){
+func lex(input string) chan Token {
 	l := &lexer{
-		name   : name, 
-		input  : input,
-		tokens : make(chan token), 
+		input:  input,
+		tokens: make(chan Token),
 	}
 	go l.run()
-	return l, l.tokens
+	return l.tokens
 }
 
 func (l *lexer) run() {
-	// Another method is to remove this and reinitiate by 
-	// simple switch case 
+	// Another method is to remove this and reinitiate by
+	// simple switch case
 	// Reference - https://github.com/golang/go/blob/master/src/go/scanner/scanner.go#L598-L761
-	for state := initState; state != nil; {
-		state = state(l)
-	} 
+	for DONE == false {
+		initState(l)
+	}
+	// for state := initState; state != nil; {
+	// 	state = state(l)
+	// }
 	close(l.tokens) // close the channel.
 }
 
-// keeps on pushing to the channel 
-func (l *lexer) emit(t tokens.TokenType) {
-	l.tokens <- token{t, l.input[l.start : l.pos]}
-	l.start = l.pos // update the start pointer 
+// keeps on pushing to the channel
+func (l *lexer) emit(t TokenType) {
+	l.tokens <- Token{t, l.input[l.start:l.pos]}
+	l.start = l.pos // update the start pointer
 }
 
 func (l *lexer) peek() rune {
 	r := l.next()
 	l.backup()
-	if (r == eof) {
-		return eof
+	if r == EOF {
+		return EOF
 	}
 	return r
 }
 
 func (l *lexer) next() rune {
-	// check if its end of file 
-	if l.pos >= len(l.input) { 
-		l.width = 0
-		return eof 
-	}	
-	r, _ := utf8.DecodeRuneInString(l.input[l.pos:]) // throws out the next rune in the input string 
-	l.width = 1 // updates the current width TODO : this is fucked too
+	// check if its end of file
+	if l.pos >= len(l.input) {
+		return EOF
+	}
+	r, _ := utf8.DecodeRuneInString(l.input[l.pos:]) // throws out the next rune in the input string
 	l.pos += 1
 	return r
 
 }
 
 func (l *lexer) backup() {
-	l.pos -= l.width
+	l.pos -= 1
 }
 
 //##########################//
 //      THE REAL sHiT       //
 //##########################//
 
-// pretty printing 
-func (t token) String() string {
-	return fmt.Sprintf("<Type : %v Value : %v>\n", t.typ, t.val)
+// pretty printing
+func (t Token) String() string {
+	return fmt.Sprintf("<Type : %v Value : %v>\n", t.type_, t.val)
 }
 
 func isWhiteSpace(ch rune) bool {
-	return ch == ' ' || ch == '\n'
+	return ch == ' '
 }
 
 func isLetter(ch rune) bool {
@@ -110,113 +109,131 @@ func isLetter(ch rune) bool {
 }
 
 func isDigit(ch rune) bool {
-	return '0' <= ch && ch <= '9' 
+	return '0' <= ch && ch <= '9'
 }
 
-func consumeSpace(l *lexer) stateFunc {
+func consumeSpace(l *lexer) {
 
 	for isWhiteSpace(l.peek()) {
 		l.next()
 	}
-	l.emit(tokens.TokenSpace) // put the space type in the channel
-	
-	return initState
+	//l.emit(TokenSpace) // put the space type in the channel
 }
 
-func scanIdentifier(l *lexer) stateFunc {
+func scanIdentifier(l *lexer) {
 	// an indentifier can contain a letter as well a digit
-	for isLetter(l.peek()) || isDigit(l.peek()){
+	// Handle the keywords here
+	var ident string
+	for p := l.peek(); isLetter(p) || isDigit(p); {
+		ident += string(p)
 		l.next()
+		p = l.peek()
 	}
-	l.emit(tokens.TokenName)	
-	return initState
-} 
-
-func scanNumber(l *lexer) stateFunc {
-	// currently only integers 
-	for isDigit(l.peek()){
-		l.next()
+	if strings.Compare(ident, "print") == 0 {
+		l.emit(TokenPrint)
+	} else if strings.Compare(ident, "while") == 0 {
+		l.emit(TokenWhile)
+	} else {
+		l.emit(TokenName)
 	}
-	l.emit(tokens.TokenNumber)	
-	return initState
 }
 
-func consumeLEGR(l * lexer, tok rune, 
-	tokenLR, 
-	tokenLGEqual, 
-	tokenLRShift tokens.TokenType) stateFunc {
+func scanNumber(l *lexer) {
+	// currently only integers
+	for isDigit(l.peek()) {
+		l.next()
+	}
+	l.emit(TokenNumber)
+}
+
+func consumeLEGR(l *lexer, tok rune,
+	tokenLR,
+	tokenLGEqual,
+	tokenLRShift TokenType) {
 	/*
-	General function for handling bot '<' and '>'
-	related operators 
-	Left/Right shift is overriding Less/Greater
+		General function for handling bot '<' and '>'
+		related operators
+		Left/Right shift is overriding Less/Greater
 	*/
 	nt := l.peek()
 	if nt == '=' {
 		l.next()
 		l.emit(tokenLGEqual)
-	}else if nt == tok { // for handling shift operators 
+	} else if nt == tok { // for handling shift operators
 		l.next()
 		l.emit(tokenLRShift)
-	}else {
+	} else {
 		l.emit(tokenLR)
 	}
-	return initState
 }
 
-func consumeGen(l *lexer) stateFunc{
-	ch := l.peek();
+func consumeGen(l *lexer) {
+	ch := l.peek()
 	l.next()
-	switch ch{
-		case ',':			
-			l.emit(tokens.TokenComma)	
-		case '{':			
-			l.emit(tokens.TokenLpar)
-		case '}':			
-			l.emit(tokens.TokenRpar)
-		case '+':			
-			l.emit(tokens.TokenPlus)
-		case '-':			
-			l.emit(tokens.TokenMinus)
-		case '*':
-			l.emit(tokens.TokenStar)
-		case '%':
-			l.emit(tokens.TokenPercent)
-		case '/':
-			l.emit(tokens.TokenSlash)	
-		case '\t':
-			l.emit(tokens.TokenIndent)	
-		case '<':
-			consumeLEGR(l, '<', tokens.TokenLess, tokens.TokenLessEqual, tokens.TokenLeftShift)
-		case '>':
-			consumeLEGR(l, '>', tokens.TokenGreater, tokens.TokenGreaterEqual, tokens.TokenRightShift)			
-	}	
-	return initState
+	switch ch {
+	case '=':
+		l.emit(TokenEqual)
+	case ',':
+		l.emit(TokenComma)
+	case '{':
+		l.emit(TokenLpar)
+	case '}':
+		l.emit(TokenRpar)
+	case '+':
+		l.emit(TokenPlus)
+	case '-':
+		l.emit(TokenMinus)
+	case '*':
+		l.emit(TokenStar)
+	case '%':
+		l.emit(TokenPercent)
+	case '/':
+		l.emit(TokenSlash)
+	case '\t':
+		l.emit(TokenIndent)
+	case '\n':
+		l.emit(TokenNewLine)
+	case '<':
+		consumeLEGR(l, '<', TokenLess, TokenLessEqual, TokenLeftShift)
+	case '>':
+		consumeLEGR(l, '>', TokenGreater, TokenGreaterEqual, TokenRightShift)
+	}
 }
 
-func initState(l *lexer) stateFunc { 	
-	sf := initState
+func initState(l *lexer) {
 	switch ch := l.peek(); {
-		case isWhiteSpace(ch):
-			sf = consumeSpace(l) // consume the white space 
-		case isLetter(ch):
-			sf = scanIdentifier(l)	
-		case '0' <= ch && ch <= '9':
-			sf = scanNumber(l)		
-		case ch == eof:	
-			return nil
-		default:
-			sf = consumeGen(l)	
-			
-		// TODO make it recognize other things like names/numbers/letters 	
+	case isWhiteSpace(ch):
+		consumeSpace(l) // consume the white space
+	case isLetter(ch):
+		scanIdentifier(l)
+	case '0' <= ch && ch <= '9':
+		scanNumber(l)
+	case ch == EOF:
+		DONE = true
+	default:
+		consumeGen(l)
 	}
-	return sf // this is fucking hard coded 
 }
 
-
-func main() {
-	_, c := lex("test", "<<>><=>=>><>") // currently recognizing white space 
-	for i := range c {
-		fmt.Printf("%v\n", i)	
+func Lexer_Test(prog string) {
+	token_chan := lex(prog)
+	out := false
+	for {
+		select {
+		case token, ok := <-token_chan:
+			if ok {
+				fmt.Println(token)
+			} else {
+				out = true
+			}
+		}
+		if out {
+			break
+		}
 	}
-	
+}
+func Lexer(prog string) chan Token {
+	// recieves the program
+	token_chan := lex(prog) // currently recognizing white space
+	return token_chan
 }

@@ -1,16 +1,15 @@
-package tokens
+package gython
 
-
-type TokenType int;
+type TokenType int
 
 const (
 	//TODO : pick from top level comment to implement more - line 165
-	TokenError TokenType = iota 
+	TokenError TokenType = iota
 	TokenNumber
-	TokenSTring 
-	TokenSpace 
+	TokenString
+	TokenSpace
 	TokenName
-	TokenComma 
+	TokenComma
 	TokenLpar
 	TokenRpar
 	TokenPlus
@@ -30,4 +29,9 @@ const (
 	TokenLeftShift
 	TokenRightShift
 	TokenIndent
+	TokenNewLine
+	TokenWhile // Keywords
+	TokenIf
+	TokenPrint
+	TokenFor
 )

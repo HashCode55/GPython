@@ -1,0 +1,72 @@
+program := NEWLINE | simple_stmt  NEWLINE
+
+
+# Simple statements 
+simple_stmt := small_stmt (';' small_stmt)* [';'] NEWLINE
+small_stmt := (expr_stmt | print_stmt  | flow_stmt | global_stmt)
+
+expr_stmt := NAME '=' terminal 
+print_stmt := 'print' terminal 
+
+terminal := NAME | NUMBER | STRING 
+
+flow_stmt: break_stmt | continue_stmt | return_stmt 
+break_stmt: 'break'
+continue_stmt: 'continue'
+return_stmt: 'return' terminal 
+
+global_stmt: 'global' NAME (',' NAME)*
+
+
+# Compound statements 
+compound_stmt: if_stmt | while_stmt | for_stmt | funcdef 
+
+if_stmt: 'if' test ':' suite ('elif' test ':' suite)* ['else' ':' suite]
+
+while_stmt: 'while' test ':' suite ['else' ':' suite]
+
+for_stmt: 'for' exprlist 'in' testlist ':' suite ['else' ':' suite]
+
+funcdef := 'def' NAME parameters ':' suite
+parameters := '(' [NAME] ')'
+
+
+testlist: test (',' test)* [',']
+
+test: or_test 
+or_test: and_test ('or' and_test)*
+and_test: not_test ('and' not_test)*
+not_test: 'not' not_test | comparison
+comparison: expr (comp_op expr)*
+comp_op: '<'|'>'|'=='|'>='|'<='|'<>'|'!='|'in'|'not' 'in'|'is'|'is' 'not'
+expr: xor_expr ('|' xor_expr)*
+xor_expr: and_expr ('^' and_expr)*
+and_expr: shift_expr ('&' shift_expr)*
+shift_expr: arith_expr (('<<'|'>>') arith_expr)*
+arith_expr: term (('+'|'-') term)*
+term: factor (('*'|'/'|'%'|'//') factor)*
+factor: ('+'|'-'|'~') factor | power
+power: atom trailer* ['**' factor]
+atom: ('(' [yield_expr|testlist_comp] ')' |
+       '[' [listmaker] ']' |
+       '{' [dictorsetmaker] '}' |
+       '`' testlist1 '`' |
+       NAME | NUMBER | STRING+)
+
+listmaker: test ( list_for | (',' test)* [','] )
+testlist_comp: test ( comp_for | (',' test)* [','] )
+trailer: '(' [arglist] ')' | '[' subscriptlist ']' | '.' NAME
+subscriptlist: subscript (',' subscript)* [',']
+subscript: '.' '.' '.' | test | [test] ':' [test] [sliceop]
+sliceop: ':' [test]
+exprlist: expr (',' expr)* [',']
+testlist: test (',' test)* [',']
+dictorsetmaker: ( (test ':' test (comp_for | (',' test ':' test)* [','])) |
+                  (test (comp_for | (',' test)* [','])) )
+
+
+comp_iter: comp_for | comp_if
+comp_for: 'for' exprlist 'in' or_test [comp_iter]
+comp_if: 'if' old_test [comp_iter]
+
+testlist1: test (',' test)*
