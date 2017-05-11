@@ -1,7 +1,13 @@
+/**
+ * Author:    hashcode55 (Mehul Ahuja)
+ * Created:   10.03.2017
+ **/
+
 package gython
 
 import (
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"strings"
 	"unicode/utf8"
 )
@@ -9,9 +15,6 @@ import (
 //##########################//
 //    TYPE AND CONST DEFS   //
 //##########################//
-
-// TODO: Error handling
-// TODO: logging, remove fmt altogether
 
 // Token encapsulates a token using a type variable and
 // its Value.
@@ -22,7 +25,7 @@ type Token struct {
 
 // String cooks a pretty string for logging.
 func (t Token) String() string {
-	return fmt.Sprintf("<Type : %v Value : %v>\n", t.Type_, t.Val)
+	return fmt.Sprintf("<Type : %v Value : %v>", t.Type_, t.Val)
 }
 
 // Lexer objects stores the input as a string
@@ -95,7 +98,7 @@ func (l *Lexer) backup() {
 }
 
 //##########################//
-//      THE REAL sHiT       //
+//      Baby Helpers        //
 //##########################//
 
 func isWhiteSpace(ch rune) bool {
@@ -110,6 +113,10 @@ func isDigit(ch rune) bool {
 	return '0' <= ch && ch <= '9'
 }
 
+//##########################//
+//   "Consume" Functions    //
+//##########################//
+
 // consumeSpace eats up all the white space
 func consumeSpace(l *Lexer) {
 	for isWhiteSpace(l.peek()) {
@@ -118,8 +125,8 @@ func consumeSpace(l *Lexer) {
 	l.start = l.pos
 }
 
-// scanIdentifier scans th identifiers and modifies the pointers
-func scanIdentifier(l *Lexer) {
+// consumeIdentifier scans th identifiers and modifies the pointers
+func consumeIdentifier(l *Lexer) {
 	var ident string
 	for p := l.peek(); isLetter(p) || isDigit(p); {
 		ident += string(p)
@@ -135,8 +142,8 @@ func scanIdentifier(l *Lexer) {
 	}
 }
 
-// scanNumber scans the numbers, currenlty only integers supported
-func scanNumber(l *Lexer) {
+// consumeNumber scans the numbers, currenlty only integers supported
+func consumeNumber(l *Lexer) {
 	// currently only integers
 	for isDigit(l.peek()) {
 		l.next()
@@ -161,6 +168,29 @@ func consumeLEGR(l *Lexer, tok rune, tokenLR, tokenLGEqual, tokenLRShift TokenTy
 	} else {
 		l.emit(tokenLR)
 	}
+}
+
+// consumeString consumes the string enclosed on '' or ""
+func consumeString(l *Lexer) {
+	// check if the string is starting from ' or "
+	cur := l.peek()
+	var quoteType, rn rune
+	if cur == '"' {
+		quoteType = '"'
+	} else if cur == '\'' {
+		quoteType = '\''
+	}
+	// advance one rune as we already know what it is
+	l.next()
+	for l.peek() != quoteType {
+		rn = l.next()
+		if rn == EOF {
+			log.Fatalln("Lexing Failed. Error in the string token.")
+		}
+	}
+	// advance to include the quote in the string
+	l.next()
+	l.emit(TokenString)
 }
 
 // consumeGen is for consuming general lexemes
@@ -194,23 +224,30 @@ func consumeGen(l *Lexer) {
 		consumeLEGR(l, '<', TokenLess, TokenLessEqual, TokenLeftShift)
 	case '>':
 		consumeLEGR(l, '>', TokenGreater, TokenGreaterEqual, TokenRightShift)
+	default:
+		log.Fatalf("Lexing Failed. Unexpected token. %v", ch)
 	}
 }
 
+//##########################//
+//     The Core Engine      //
+//##########################//
+
 // initState initialises the stuff
 func initState(l *Lexer) {
-
 	var ch rune
 	for ch != EOF {
 		switch ch = l.peek(); {
 		case isWhiteSpace(ch):
 			consumeSpace(l) // consume the white space
 		case isLetter(ch):
-			scanIdentifier(l)
+			consumeIdentifier(l)
 		case '0' <= ch && ch <= '9':
-			scanNumber(l)
+			consumeNumber(l)
+		case ch == '"' || ch == '\'':
+			consumeString(l)
 		case ch == EOF:
-
+			break
 		default:
 			consumeGen(l)
 		}
@@ -226,7 +263,7 @@ func LexEngineTest(prog string) {
 		select {
 		case token, ok := <-token_chan:
 			if ok {
-				fmt.Println(token)
+				log.Infoln(token)
 			} else {
 				out = true
 			}

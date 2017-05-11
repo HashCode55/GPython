@@ -1,3 +1,8 @@
+/**
+ * Author:    hashcode55 (Mehul Ahuja)
+ * Created:   11.05.2017
+ **/
+
 package gython
 
 type TokenType int
