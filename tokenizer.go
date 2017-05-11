@@ -11,20 +11,24 @@ import (
 //##########################//
 
 // TODO: Error handling
-
-// this is to avoid lots of switch statements.
-// like this - https://blog.gopheracademy.com/advent-2014/parsers-lexers/
-//type stateFunc func(*lexer) stateFunc
+// TODO: logging, remove fmt altogether
 
 // Token encapsulates a token using a type variable and
-// its value.
+// its Value.
 type Token struct {
-	type_ TokenType // this is a wrapper over the default int
-	val   string
+	Type_ TokenType // his is a wrapper over the default int
+	Val   string    // Val stores the Value of the token
 }
 
-// mapping integers to the token types
-type lexer struct {
+// String cooks a pretty string for logging.
+func (t Token) String() string {
+	return fmt.Sprintf("<Type : %v Value : %v>\n", t.Type_, t.Val)
+}
+
+// Lexer objects stores the input as a string
+// keeps two pointers to manage the tokens, "Start" and "Pos"
+// Tokens is a channel in which the Lexer pushes.
+type Lexer struct {
 	input  string     // the string being scanner
 	start  int        // the start state
 	pos    int        // current position in input
@@ -33,14 +37,13 @@ type lexer struct {
 
 const EOF = -1
 
-var DONE bool = false
-
 //##########################//
 //     Lexer Definition     //
 //##########################//
 
+// lex creates a new lex object
 func lex(input string) chan Token {
-	l := &lexer{
+	l := &Lexer{
 		input:  input,
 		tokens: make(chan Token),
 	}
@@ -48,35 +51,34 @@ func lex(input string) chan Token {
 	return l.tokens
 }
 
-func (l *lexer) run() {
+// run is a wrapper over the main call
+func (l *Lexer) run() {
 	// Another method is to remove this and reinitiate by
 	// simple switch case
 	// Reference - https://github.com/golang/go/blob/master/src/go/scanner/scanner.go#L598-L761
-	for DONE == false {
-		initState(l)
-	}
-	// for state := initState; state != nil; {
-	// 	state = state(l)
-	// }
-	close(l.tokens) // close the channel.
+	defer close(l.tokens) // close the channel.
+	initState(l)
 }
 
-// keeps on pushing to the channel
-func (l *lexer) emit(t TokenType) {
+// emit keeps on pushing to the channel
+func (l *Lexer) emit(t TokenType) {
 	l.tokens <- Token{t, l.input[l.start:l.pos]}
 	l.start = l.pos // update the start pointer
 }
 
-func (l *lexer) peek() rune {
+// peek is for looking up the next rune not consuming it.
+func (l *Lexer) peek() rune {
 	r := l.next()
-	l.backup()
+	// Nasty little bug!
 	if r == EOF {
-		return EOF
+		return r
 	}
+	l.backup()
 	return r
 }
 
-func (l *lexer) next() rune {
+// next is for consuming the token
+func (l *Lexer) next() rune {
 	// check if its end of file
 	if l.pos >= len(l.input) {
 		return EOF
@@ -87,18 +89,14 @@ func (l *lexer) next() rune {
 
 }
 
-func (l *lexer) backup() {
+// backup is to take a step back
+func (l *Lexer) backup() {
 	l.pos -= 1
 }
 
 //##########################//
 //      THE REAL sHiT       //
 //##########################//
-
-// pretty printing
-func (t Token) String() string {
-	return fmt.Sprintf("<Type : %v Value : %v>\n", t.type_, t.val)
-}
 
 func isWhiteSpace(ch rune) bool {
 	return ch == ' '
@@ -112,17 +110,16 @@ func isDigit(ch rune) bool {
 	return '0' <= ch && ch <= '9'
 }
 
-func consumeSpace(l *lexer) {
-
+// consumeSpace eats up all the white space
+func consumeSpace(l *Lexer) {
 	for isWhiteSpace(l.peek()) {
 		l.next()
 	}
-	//l.emit(TokenSpace) // put the space type in the channel
+	l.start = l.pos
 }
 
-func scanIdentifier(l *lexer) {
-	// an indentifier can contain a letter as well a digit
-	// Handle the keywords here
+// scanIdentifier scans th identifiers and modifies the pointers
+func scanIdentifier(l *Lexer) {
 	var ident string
 	for p := l.peek(); isLetter(p) || isDigit(p); {
 		ident += string(p)
@@ -138,7 +135,8 @@ func scanIdentifier(l *lexer) {
 	}
 }
 
-func scanNumber(l *lexer) {
+// scanNumber scans the numbers, currenlty only integers supported
+func scanNumber(l *Lexer) {
 	// currently only integers
 	for isDigit(l.peek()) {
 		l.next()
@@ -146,10 +144,8 @@ func scanNumber(l *lexer) {
 	l.emit(TokenNumber)
 }
 
-func consumeLEGR(l *lexer, tok rune,
-	tokenLR,
-	tokenLGEqual,
-	tokenLRShift TokenType) {
+// consumeLEGR is for consuming <, >, <=, >=
+func consumeLEGR(l *Lexer, tok rune, tokenLR, tokenLGEqual, tokenLRShift TokenType) {
 	/*
 		General function for handling bot '<' and '>'
 		related operators
@@ -167,7 +163,8 @@ func consumeLEGR(l *lexer, tok rune,
 	}
 }
 
-func consumeGen(l *lexer) {
+// consumeGen is for consuming general lexemes
+func consumeGen(l *Lexer) {
 	ch := l.peek()
 	l.next()
 	switch ch {
@@ -200,22 +197,29 @@ func consumeGen(l *lexer) {
 	}
 }
 
-func initState(l *lexer) {
-	switch ch := l.peek(); {
-	case isWhiteSpace(ch):
-		consumeSpace(l) // consume the white space
-	case isLetter(ch):
-		scanIdentifier(l)
-	case '0' <= ch && ch <= '9':
-		scanNumber(l)
-	case ch == EOF:
-		DONE = true
-	default:
-		consumeGen(l)
+// initState initialises the stuff
+func initState(l *Lexer) {
+
+	var ch rune
+	for ch != EOF {
+		switch ch = l.peek(); {
+		case isWhiteSpace(ch):
+			consumeSpace(l) // consume the white space
+		case isLetter(ch):
+			scanIdentifier(l)
+		case '0' <= ch && ch <= '9':
+			scanNumber(l)
+		case ch == EOF:
+
+		default:
+			consumeGen(l)
+		}
 	}
 }
 
-func Lexer_Test(prog string) {
+// Lexer_Test is for testing the code. Upon calling it prints all the
+// tokens.
+func LexEngineTest(prog string) {
 	token_chan := lex(prog)
 	out := false
 	for {
@@ -232,8 +236,13 @@ func Lexer_Test(prog string) {
 		}
 	}
 }
-func Lexer(prog string) chan Token {
-	// recieves the program
-	token_chan := lex(prog) // currently recognizing white space
+
+// Lexer is the core of the tokenization. It takes the program as a string as input.
+// and makes a call to "lex"(Unexported). lex fires up a goroutine pushing the tokens in a
+// channel which'll be used by the parser concurrently.
+// PARAMS:: prog - A string carrying the program
+// RETURNS:: token_chan - Channel in which the Lexer pushes.
+func LexEngine(prog string) chan Token {
+	token_chan := lex(prog)
 	return token_chan
 }

@@ -44,7 +44,7 @@ func (p *parser) advance() {
 // accept is used to successfully consumes the token.
 // Analogous to "eat" function.
 func (p *parser) accept(t TokenType) bool {
-	if p.nextToken.type_ == t {
+	if p.nextToken.Type_ == t {
 		p.advance()
 		return true
 	}
@@ -70,12 +70,12 @@ func (p *parser) atom() {
 // division.
 func (p *parser) term_expr() {
 	p.atom()
-	for p.nextToken.type_ == TokenStar || p.nextToken.type_ == TokenSlash {
-		if p.nextToken.type_ == TokenStar {
+	for p.nextToken.Type_ == TokenStar || p.nextToken.Type_ == TokenSlash {
+		if p.nextToken.Type_ == TokenStar {
 			// A call to expect eats up the token
 			p.expect(TokenStar)
 
-		} else if p.nextToken.type_ == TokenSlash {
+		} else if p.nextToken.Type_ == TokenSlash {
 			// Eat the token
 			p.expect(TokenSlash)
 		}
@@ -87,12 +87,12 @@ func (p *parser) term_expr() {
 // fact_expr is the production for handling sum and subtraction.
 func (p *parser) fact_expr() {
 	p.term_expr()
-	for p.nextToken.type_ == TokenPlus || p.nextToken.type_ == TokenMinus {
-		if p.nextToken.type_ == TokenPlus {
+	for p.nextToken.Type_ == TokenPlus || p.nextToken.Type_ == TokenMinus {
+		if p.nextToken.Type_ == TokenPlus {
 			// A call to expect eats up the token
 			p.expect(TokenPlus)
 
-		} else if p.nextToken.type_ == TokenMinus {
+		} else if p.nextToken.Type_ == TokenMinus {
 			// Eat the token
 			p.expect(TokenMinus)
 		}
@@ -105,9 +105,9 @@ func (p *parser) fact_expr() {
 func (p *parser) start() {
 	if p.accept(TokenName) {
 		p.expect(TokenEqual)
-		if p.nextToken.type_ == TokenName {
+		if p.nextToken.Type_ == TokenName {
 			p.expect(TokenName)
-		} else if p.nextToken.type_ == TokenString {
+		} else if p.nextToken.Type_ == TokenString {
 			p.expect(TokenString)
 		}
 		// recursive call to expression
@@ -122,7 +122,7 @@ func Parser(input string) {
 	*/
 
 	// Testing if the package works.
-	token_chan := Lexer(input)
+	token_chan := LexEngine(input)
 	p := parser{tokens: token_chan}
 	p.advance()
 	p.start()

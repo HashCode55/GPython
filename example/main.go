@@ -7,5 +7,5 @@ import (
 )
 
 func main() {
-	gython.Lexer_Test("hello = 2  ")
+	gython.LexEngineTest("hello 2 + 2*")
 }
