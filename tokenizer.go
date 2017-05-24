@@ -50,12 +50,12 @@ func lex(input string) chan Token {
 		input:  input,
 		tokens: make(chan Token),
 	}
-	go l.run()
+	go l.Run()
 	return l.tokens
 }
 
-// run is a wrapper over the main call
-func (l *Lexer) run() {
+// Run is a wrapper over the main call
+func (l *Lexer) Run() {
 	// Another method is to remove this and reinitiate by
 	// simple switch case
 	// Reference - https://github.com/golang/go/blob/master/src/go/scanner/scanner.go#L598-L761
@@ -63,25 +63,25 @@ func (l *Lexer) run() {
 	initState(l)
 }
 
-// emit keeps on pushing to the channel
-func (l *Lexer) emit(t TokenType) {
+// Emit keeps on pushing to the channel
+func (l *Lexer) Emit(t TokenType) {
 	l.tokens <- Token{t, l.input[l.start:l.pos]}
 	l.start = l.pos // update the start pointer
 }
 
-// peek is for looking up the next rune not consuming it.
-func (l *Lexer) peek() rune {
-	r := l.next()
+// Peek is for looking up the next rune not consuming it.
+func (l *Lexer) Peek() rune {
+	r := l.Next()
 	// Nasty little bug!
 	if r == EOF {
 		return r
 	}
-	l.backup()
+	l.Backup()
 	return r
 }
 
-// next is for consuming the token
-func (l *Lexer) next() rune {
+// Next is for consuming the token
+func (l *Lexer) Next() rune {
 	// check if its end of file
 	if l.pos >= len(l.input) {
 		return EOF
@@ -92,8 +92,8 @@ func (l *Lexer) next() rune {
 
 }
 
-// backup is to take a step back
-func (l *Lexer) backup() {
+// Backup is to take a step back
+func (l *Lexer) Backup() {
 	l.pos -= 1
 }
 
@@ -119,8 +119,8 @@ func isDigit(ch rune) bool {
 
 // consumeSpace eats up all the white space
 func consumeSpace(l *Lexer) {
-	for isWhiteSpace(l.peek()) {
-		l.next()
+	for isWhiteSpace(l.Peek()) {
+		l.Next()
 	}
 	l.start = l.pos
 }
@@ -128,52 +128,52 @@ func consumeSpace(l *Lexer) {
 // consumeIdentifier scans th identifiers and modifies the pointers
 func consumeIdentifier(l *Lexer) {
 	var ident string
-	for p := l.peek(); isLetter(p) || isDigit(p); {
+	for p := l.Peek(); isLetter(p) || isDigit(p); {
 		ident += string(p)
-		l.next()
-		p = l.peek()
+		l.Next()
+		p = l.Peek()
 	}
 	if strings.Compare(ident, "print") == 0 {
-		l.emit(TokenPrint)
+		l.Emit(TokenPrint)
 	} else if strings.Compare(ident, "while") == 0 {
-		l.emit(TokenWhile)
+		l.Emit(TokenWhile)
 	} else {
-		l.emit(TokenName)
+		l.Emit(TokenName)
 	}
 }
 
 // consumeNumber scans the numbers, currenlty only integers supported
 func consumeNumber(l *Lexer) {
 	// currently only integers
-	for isDigit(l.peek()) {
-		l.next()
+	for isDigit(l.Peek()) {
+		l.Next()
 	}
-	l.emit(TokenNumber)
+	l.Emit(TokenNumber)
 }
 
 // consumeLEGR is for consuming <, >, <=, >=
 func consumeLEGR(l *Lexer, tok rune, tokenLR, tokenLGEqual, tokenLRShift TokenType) {
 	/*
-		General function for handling bot '<' and '>'
+		General function for handling both '<' and '>'
 		related operators
 		Left/Right shift is overriding Less/Greater
 	*/
-	nt := l.peek()
+	nt := l.Peek()
 	if nt == '=' {
-		l.next()
-		l.emit(tokenLGEqual)
+		l.Next()
+		l.Emit(tokenLGEqual)
 	} else if nt == tok { // for handling shift operators
-		l.next()
-		l.emit(tokenLRShift)
+		l.Next()
+		l.Emit(tokenLRShift)
 	} else {
-		l.emit(tokenLR)
+		l.Emit(tokenLR)
 	}
 }
 
 // consumeString consumes the string enclosed on '' or ""
 func consumeString(l *Lexer) {
 	// check if the string is starting from ' or "
-	cur := l.peek()
+	cur := l.Peek()
 	var quoteType, rn rune
 	if cur == '"' {
 		quoteType = '"'
@@ -181,51 +181,54 @@ func consumeString(l *Lexer) {
 		quoteType = '\''
 	}
 	// advance one rune as we already know what it is
-	l.next()
-	for l.peek() != quoteType {
-		rn = l.next()
+	l.Next()
+	for l.Peek() != quoteType {
+		rn = l.Next()
 		if rn == EOF {
-			log.Fatalln("Lexing Failed. Error in the string token.")
+			log.Error("Lexing Failed. Error in the string token.")
+			l.Emit(TokenError)
+			return // without this the function will become catastrophic
 		}
 	}
 	// advance to include the quote in the string
-	l.next()
-	l.emit(TokenString)
+	l.Next()
+	l.Emit(TokenString)
 }
 
 // consumeGen is for consuming general lexemes
 func consumeGen(l *Lexer) {
-	ch := l.peek()
-	l.next()
+	ch := l.Peek()
+	l.Next()
 	switch ch {
 	case '=':
-		l.emit(TokenEqual)
+		l.Emit(TokenEqual)
 	case ',':
-		l.emit(TokenComma)
+		l.Emit(TokenComma)
 	case '{':
-		l.emit(TokenLpar)
+		l.Emit(TokenLpar)
 	case '}':
-		l.emit(TokenRpar)
+		l.Emit(TokenRpar)
 	case '+':
-		l.emit(TokenPlus)
+		l.Emit(TokenPlus)
 	case '-':
-		l.emit(TokenMinus)
+		l.Emit(TokenMinus)
 	case '*':
-		l.emit(TokenStar)
+		l.Emit(TokenStar)
 	case '%':
-		l.emit(TokenPercent)
+		l.Emit(TokenPercent)
 	case '/':
-		l.emit(TokenSlash)
+		l.Emit(TokenSlash)
 	case '\t':
-		l.emit(TokenIndent)
+		l.Emit(TokenIndent)
 	case '\n':
-		l.emit(TokenNewLine)
+		l.Emit(TokenNewLine)
 	case '<':
 		consumeLEGR(l, '<', TokenLess, TokenLessEqual, TokenLeftShift)
 	case '>':
 		consumeLEGR(l, '>', TokenGreater, TokenGreaterEqual, TokenRightShift)
 	default:
-		log.Fatalf("Lexing Failed. Unexpected token. %v", ch)
+		log.Errorf("Lexing Failed. Unexpected token. %v", ch)
+		l.Emit(TokenError)
 	}
 }
 
@@ -237,7 +240,7 @@ func consumeGen(l *Lexer) {
 func initState(l *Lexer) {
 	var ch rune
 	for ch != EOF {
-		switch ch = l.peek(); {
+		switch ch = l.Peek(); {
 		case isWhiteSpace(ch):
 			consumeSpace(l) // consume the white space
 		case isLetter(ch):
@@ -254,16 +257,16 @@ func initState(l *Lexer) {
 	}
 }
 
-// Lexer_Test is for testing the code. Upon calling it prints all the
-// tokens.
-func LexEngineTest(prog string) {
+// LexEngineTest is for testing the code. Returns a list of Token (fetching from the channel)
+func LexEngineTest(prog string) []Token {
 	token_chan := lex(prog)
+	tokenList := []Token{}
 	out := false
 	for {
 		select {
 		case token, ok := <-token_chan:
 			if ok {
-				log.Infoln(token)
+				tokenList = append(tokenList, token)
 			} else {
 				out = true
 			}
@@ -272,6 +275,7 @@ func LexEngineTest(prog string) {
 			break
 		}
 	}
+	return tokenList
 }
 
 // Lexer is the core of the tokenization. It takes the program as a string as input.

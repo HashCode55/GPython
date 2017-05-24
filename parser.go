@@ -6,7 +6,7 @@
  * Each rule, R, defined in the grammar, becomes a method with the same name.
  * Alternatives (a1 | a2 | aN) become an if-elif-else statement
  * An optional grouping (…)* becomes a while statement that can loop over zero or more times
- * Each token reference T becomes a call to the method accept: accept(T).
+ * Each token reference T becomes a call to the method Accept: Accept(T).
 
  * If any changes in the grammar have to be made, first change it in grammar.txt and then edit this
  * file.
@@ -16,32 +16,35 @@ package gython
 
 // Handle identifier startng with a number
 import (
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 )
 
-type parser struct {
-	tokens       chan Token
-	currentToken Token
-	nextToken    Token
-	log_         bool
+// Parser does what its name suggests. It eats up tokens and builds an AST.
+type Parser struct {
+	Tokens       chan Token // Tokens is the channel that is passed by the lexer
+	CurrentToken Token      // CurrentToken stores the the current token, for the building of AST
+	NextToken    Token      // NextToken stores the next token for lookup (LL(1))
+	log_         bool       // log_ is just for testing
 }
 
-// AST is just the top level abstraction of further nodes.
+// AST is just the top level abstraction of AST nodes.
 type AST struct {
 }
 
-// Node inherits from the AST and builts the AST.
+// Node inherits from the AST, why this? See next line
 // TODO: Currently token is taking extra space for internal nodes/
+// A simple solution is to create multiple types of nodes
 type Node struct {
-	AST         // Annymous field showing it inherits from AST
+	AST         // Annymous field
 	left  *Node // Left node
 	token Token // Store the token
 	right *Node // Right node
 }
 
-// traverse is a breadth first traversal over the AST for testing and debugging.
-func (ast *AST) traverse(root *Node) {
-	// TODO: implement this
+// Traverse is a breadth first traversal over the AST for testing and debugging.
+func (ast *AST) Traverse(root *Node) []string {
+	tokenList := []string{}
 	queue := []*Node{}
 	queue = append(queue, root)
 	for len(queue) != 0 {
@@ -49,6 +52,7 @@ func (ast *AST) traverse(root *Node) {
 		node := queue[0]
 		queue = queue[1:]
 		log.Info(node.token)
+		tokenList = append(tokenList, node.token.Val)
 		if node.left != nil {
 			queue = append(queue, node.left)
 		}
@@ -56,128 +60,169 @@ func (ast *AST) traverse(root *Node) {
 			queue = append(queue, node.right)
 		}
 	}
+	return tokenList
 }
 
-// advance modifies two pointers of the parser construct.
+// Advance modifies two pointers of the Parser construct.
 // It makes the current token as next token and get the next token
 // from the channel.
 // TODO: We might not need current token variable at all.
-func (p *parser) advance() {
+func (p *Parser) Advance() {
 	select {
-	case token, ok := <-p.tokens:
+	case token, ok := <-p.Tokens:
 		if ok {
 			if p.log_ {
 				log.Infoln(token)
 			}
-			p.currentToken = p.nextToken
-			p.nextToken = token
+			p.CurrentToken = p.NextToken
+			p.NextToken = token
 		} else {
-			p.currentToken = p.nextToken
+			p.CurrentToken = p.NextToken
 			// Replace the next token with an empty token
-			p.nextToken = Token{}
+			p.NextToken = Token{}
 			log.Infoln("Channel empty. Finished Parsing without any error.\n")
 		}
 	}
 }
 
-// accept is used to successfully consumes the token.
+// Accept is used to successfully consumes the token.
 // Analogous to "eat" function.
-func (p *parser) accept(t TokenType) bool {
-	if p.nextToken.Type_ == t {
-		p.advance()
+func (p *Parser) Accept(t TokenType) bool {
+	if p.NextToken.Type_ == t {
+		p.Advance()
 		return true
 	}
 	return false
 }
 
-// expect expects the next token to be of type t
-// if found true it advances else fails.
-func (p *parser) expect(t TokenType) bool {
-	if p.accept(t) {
-		return true
+// Expect expects the next token to be of type t
+// if found true it Advances else fails.
+func (p *Parser) Expect(t TokenType) error {
+	if p.Accept(t) {
+		return nil
 	}
-	log.Fatalln("Parsing Failed. Bad Syntax. %v", p.nextToken.Val)
-	return false
+	// log.Fatalln("Parsing Failed. Bad Syntax. %v", p.NextToken.Val)
+	err := fmt.Errorf("Parsing Failed. Bad Syntax. %v", p.NextToken.Val)
+	return err
 }
 
 // atom is terminal production, returns a Node for AST
-func (p *parser) atom() *Node {
-	p.expect(TokenNumber)
-	return &Node{left: nil, token: p.currentToken, right: nil}
+func (p *Parser) atom() (*Node, error) {
+	err := p.Expect(TokenNumber)
+	if err != nil {
+		return nil, err
+	}
+	return &Node{left: nil, token: p.CurrentToken, right: nil}, nil
 }
 
 // termExpr is the production for handling multiplication and
 // division.
-func (p *parser) termExpr() *Node {
-	node := p.atom()
-	for p.nextToken.Type_ == TokenStar || p.nextToken.Type_ == TokenSlash {
-		if p.nextToken.Type_ == TokenStar {
-			// A call to expect eats up the token
-			p.expect(TokenStar)
-		} else if p.nextToken.Type_ == TokenSlash {
+func (p *Parser) termExpr() (*Node, error) {
+	node, err := p.atom()
+	if err != nil {
+		return nil, err
+	}
+	for p.NextToken.Type_ == TokenStar || p.NextToken.Type_ == TokenSlash {
+		if p.NextToken.Type_ == TokenStar {
+			// A call to Expect eats up the token
+			// we do not have to check for the error here
+			p.Expect(TokenStar)
+		} else if p.NextToken.Type_ == TokenSlash {
 			// Eat the token
-			p.expect(TokenSlash)
+			p.Expect(TokenSlash)
 		} else {
-			log.Fatalln("Parsing Failed. Bad Syntax. %v", p.nextToken.Val)
+			err := fmt.Errorf("Parsing Failed. Bad Syntax. %v", p.NextToken.Val)
+			return nil, err
 		}
 		// make the AST node
-		node = &Node{left: node, token: p.currentToken, right: p.atom()}
+		curtok := p.CurrentToken
+		rightNode, err := p.atom()
+		if err != nil {
+			return nil, err
+		}
+		node = &Node{left: node, token: curtok, right: rightNode}
 	}
-	return node
+	return node, nil
 }
 
 // factExpr is the production for handling sum and subtraction.
-func (p *parser) factExpr() *Node {
-	node := p.termExpr()
-	for p.nextToken.Type_ == TokenPlus || p.nextToken.Type_ == TokenMinus {
-		if p.nextToken.Type_ == TokenPlus {
-			// A call to expect eats up the token
-			p.expect(TokenPlus)
+func (p *Parser) factExpr() (*Node, error) {
+	node, err := p.termExpr()
+	if err != nil {
+		return nil, err
+	}
+	for p.NextToken.Type_ == TokenPlus || p.NextToken.Type_ == TokenMinus {
+		if p.NextToken.Type_ == TokenPlus {
+			// A call to Expect eats up the token
+			p.Expect(TokenPlus)
 
-		} else if p.nextToken.Type_ == TokenMinus {
+		} else if p.NextToken.Type_ == TokenMinus {
 			// Eat the token
-			p.expect(TokenMinus)
+			p.Expect(TokenMinus)
 		} else {
-			log.Fatalln("Parsing Failed. Bad Syntax. %v", p.nextToken.Val)
+			err := fmt.Errorf("Parsing Failed. Bad Syntax. %v", p.NextToken.Val)
+			return nil, err
 		}
 		// make the AST node
-		node = &Node{left: node, token: p.currentToken, right: p.termExpr()}
+		curtok := p.CurrentToken
+		rightNode, err := p.termExpr()
+		if err != nil {
+			return nil, err
+		}
+		node = &Node{left: node, token: curtok, right: rightNode}
 	}
-	return node
+	return node, nil
 }
 
 // start is the starting production.
-func (p *parser) start() *Node {
+// This is uglyyyyy.
+func (p *Parser) start() (*Node, error) {
 	var node *Node
-	if p.accept(TokenName) {
-		node = &Node{left: nil, token: p.currentToken, right: nil}
-		// expect '=' token
-		p.expect(TokenEqual)
-		// Built the root as '=' and continue
-		node = &Node{left: node, token: p.currentToken, right: nil}
-		if p.nextToken.Type_ == TokenName {
-			p.expect(TokenName)
-			node.right = &Node{left: nil, token: p.currentToken, right: nil}
-		} else if p.nextToken.Type_ == TokenString {
-			p.expect(TokenString)
-			node.right = &Node{left: nil, token: p.currentToken, right: nil}
-		} else if p.nextToken.Type_ == TokenNumber {
+	if p.Accept(TokenName) {
+		node = &Node{left: nil, token: p.CurrentToken, right: nil}
+		// Expect '=' token
+		err := p.Expect(TokenEqual)
+		if err != nil {
+			return nil, err
+		}
+		// Build the root as '=' and continue
+		node = &Node{left: node, token: p.CurrentToken, right: nil}
+		if p.NextToken.Type_ == TokenName {
+			p.Expect(TokenName)
+			node.right = &Node{left: nil, token: p.CurrentToken, right: nil}
+		} else if p.NextToken.Type_ == TokenString {
+			p.Expect(TokenString)
+			node.right = &Node{left: nil, token: p.CurrentToken, right: nil}
+		} else if p.NextToken.Type_ == TokenNumber {
 			// recursive call to expression
-			node.right = p.factExpr()
+			node.right, err = p.factExpr()
+			if err != nil {
+				return nil, err
+			}
 		} else {
-			log.Fatalln("Parsing Failed. Bad Syntax. %v", p.nextToken.Val)
+			err := fmt.Errorf("Parsing Failed. Bad Syntax. %v", p.NextToken.Val)
+			return nil, err
 		}
 	}
-	return node
+	return node, nil
 }
 
-// Parser initialises the parser object.
-func ParseEngine(input string, lg bool) {
+// ParseEngine is the driver od the parser, it makes a call to the LexEngine,
+// gets the token channel and builds the AST.
+// PARAMS:: input program and logging flag
+// TODO: Top level lexer call
+func ParseEngine(input string, lg bool) (*Node, error) {
 	tokenChan := LexEngine(input)
-	p := parser{tokens: tokenChan, log_: lg}
-	p.advance()
+	p := Parser{Tokens: tokenChan, log_: lg}
+	p.Advance()
 	// get the ast
-	ast := p.start()
-	log.Info("Traversing the AST... [debugging]")
-	ast.traverse(ast)
+	ast, err := p.start()
+	if err != nil {
+		return nil, err
+	}
+	if lg {
+		log.Info("Traversing the AST... [debugging]")
+		ast.Traverse(ast)
+	}
+	return ast, nil
 }

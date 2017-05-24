@@ -14,5 +14,5 @@ import (
 func main() {
 	boolPtr := flag.Bool("log", false, "Set it to true to log the details.")
 	flag.Parse()
-	gython.ParseEngine("hello = hello", *boolPtr)
+	gython.ParseEngine("hello = 2 + 3 * 6", *boolPtr)
 }
