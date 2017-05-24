@@ -8,7 +8,7 @@ package main
 // Remove local imports
 import (
 	"flag"
-	"github.com/hashcode55/gopython"
+	"github.com/hashcode55/gpython"
 )
 
 func main() {

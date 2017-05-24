@@ -3,7 +3,7 @@
  * Created:   11.05.2017
  **/
 
-package gopython
+package gpython
 
 type TokenType int
 

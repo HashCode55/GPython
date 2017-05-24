@@ -1,4 +1,4 @@
-package gopython
+package gpython
 
 import (
 	"testing"
