@@ -72,6 +72,9 @@ func (p *parser) advance() {
 			p.currentToken = p.nextToken
 			p.nextToken = token
 		} else {
+			p.currentToken = p.nextToken
+			// Replace the next token with an empty token
+			p.nextToken = Token{}
 			log.Infoln("Channel empty. Finished Parsing without any error.\n")
 		}
 	}
