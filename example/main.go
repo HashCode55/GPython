@@ -7,12 +7,12 @@ package main
 
 // Remove local imports
 import (
-	".."
 	"flag"
+	"github.com/hashcode55/gopython"
 )
 
 func main() {
 	boolPtr := flag.Bool("log", false, "Set it to true to log the details.")
 	flag.Parse()
-	gython.ParseEngine("hello = 2 + 3 * 6", *boolPtr)
+	gopython.ParseEngine("hello = 2 + 3 * 6", *boolPtr)
 }

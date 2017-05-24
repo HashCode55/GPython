@@ -3,7 +3,7 @@
  * Created:   10.03.2017
  **/
 
-package gython
+package gopython
 
 import (
 	"fmt"

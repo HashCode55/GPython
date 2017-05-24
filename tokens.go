@@ -3,7 +3,7 @@
  * Created:   11.05.2017
  **/
 
-package gython
+package gopython
 
 type TokenType int
 

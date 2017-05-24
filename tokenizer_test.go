@@ -1,4 +1,4 @@
-package gython
+package gopython
 
 import (
 	"testing"

@@ -12,7 +12,7 @@
  * file.
 **/
 
-package gython
+package gopython
 
 // Handle identifier startng with a number
 import (
