@@ -7,7 +7,8 @@ func TestParseSuccess(t *testing.T) {
 	if err != nil {
 		t.Error("Parsing failed for fine syntax.")
 	}
-
+	
+	/* Added the test for expression, "x = y + z", immediately following this comment.  _puneet_*/
 	_, err = ParseEngine("x = y + z ", false)
 	if err != nil {
 		t.Error("Parsing failed for fine syntax")
@@ -15,6 +16,7 @@ func TestParseSuccess(t *testing.T) {
 }
 
 func TestParserFail(t *testing.T) {
+	/* "Added fail test for "hello = 123 +* aas", immediately following this comment. _puneet_ */
 	_, err := ParseEngine("hello = 123 +* aas", false)
 	if err == nil {
 		t.Error("Parser not failing when bad syntax.")
