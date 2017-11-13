@@ -3,7 +3,7 @@
  * Created:   11.05.2017
  **/
 
-start := TokenName '=' TokenName | TokenString | factExpr 
+start := TokenName '=' TokenString | factExpr 
 factExpr := termExpr (TokenPlus | TokenMinus termExpr)*
 termExpr := atom (TokenStar | TokenSlash atom)*
-atom := TokenNumber
+atom := TokenNumber | TokenName
