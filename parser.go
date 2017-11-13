@@ -108,10 +108,15 @@ func (p *Parser) Expect(t TokenType) error {
 
 // atom is terminal production, returns a Node for AST
 func (p *Parser) atom() (*Node, error) {
-	err := p.Expect(TokenNumber)
-	if err != nil {
+	if (p.NextToken.Type_ == TokenNumber) {
+		p.Expect(TokenNumber)
+	} else if (p.NextToken.Type_ == TokenName) {
+		p.Expect(TokenName)
+	} else {
+		err := fmt.Errorf("Parsing Failed. Bad Syntax. %v", p.NextToken.Val)
 		return nil, err
 	}
+
 	return &Node{left: nil, token: p.CurrentToken, right: nil}, nil
 }
 
@@ -187,13 +192,13 @@ func (p *Parser) start() (*Node, error) {
 		}
 		// Build the root as '=' and continue
 		node = &Node{left: node, token: p.CurrentToken, right: nil}
-		if p.NextToken.Type_ == TokenName {
+		/*if p.NextToken.Type_ == TokenName {
 			p.Expect(TokenName)
 			node.right = &Node{left: nil, token: p.CurrentToken, right: nil}
-		} else if p.NextToken.Type_ == TokenString {
+		} else*/ if p.NextToken.Type_ == TokenString {
 			p.Expect(TokenString)
 			node.right = &Node{left: nil, token: p.CurrentToken, right: nil}
-		} else if p.NextToken.Type_ == TokenNumber {
+		} else if p.NextToken.Type_ == TokenNumber || p.NextToken.Type_ == TokenName {
 			// recursive call to expression
 			node.right, err = p.factExpr()
 			if err != nil {
