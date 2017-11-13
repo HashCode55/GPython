@@ -2,8 +2,14 @@
  * Author:    hashcode55 (Mehul Ahuja)
  * Created:   11.05.2017
  **/
+ 
+ /**
+  * Changed    " start := TokenName '=' TokenName | TokenString | factExpr "    to    " start := TokenName '=' TokenString | factExpr " 
+  * Changed    " atom := TokenNumber "    to    " atom := TokenNumber | TokenName " 
+  _puneet_
+ **/
 
-start := TokenName '=' TokenName | TokenString | factExpr 
+start := TokenName '=' TokenString | factExpr 
 factExpr := termExpr (TokenPlus | TokenMinus termExpr)*
 termExpr := atom (TokenStar | TokenSlash atom)*
-atom := TokenNumber
+atom := TokenNumber | TokenName
