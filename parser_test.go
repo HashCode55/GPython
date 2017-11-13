@@ -10,7 +10,7 @@ func TestParseSuccess(t *testing.T) {
 }
 
 func TestParserFail(t *testing.T) {
-	_, err := ParseEngine("hello = 123 - aas", false)
+	_, err := ParseEngine("hello = 123 +* aas", false)
 	if err == nil {
 		t.Error("Parser not failing when bad syntax.")
 	}
