@@ -17,6 +17,8 @@ const (
 	TokenComma
 	TokenLpar
 	TokenRpar
+	TokenLcur 
+	TokenRcur
 	TokenPlus
 	TokenMinus
 	TokenLess

@@ -80,7 +80,7 @@ func (p *Parser) Advance() {
 			p.CurrentToken = p.NextToken
 			// Replace the next token with an empty token
 			p.NextToken = Token{}
-			log.Infoln("Channel empty. Finished Parsing without any error.\n")
+			log.Infoln("Channel empty. Finished Parsing.\n")
 		}
 	}
 }
@@ -108,6 +108,27 @@ func (p *Parser) Expect(t TokenType) error {
 
 // atom is terminal production, returns a Node for AST
 func (p *Parser) atom() (*Node, error) {
+	// kingsguard 
+	if p.NextToken.Type_ == TokenRpar {		
+		err := fmt.Errorf("Parsing Failed. Right parenthesis existing without left or empty parenthesis used with operator. %v", p.NextToken.Val)
+		return nil, err
+	}
+
+	// Handling parenthesis 
+	if p.NextToken.Type_ == TokenLpar {		
+		err := p.Expect(TokenLpar)
+		node, err := p.factExpr()
+		if err != nil {							
+			return nil, err
+		}
+		err = p.Expect(TokenRpar)
+		if err != nil {
+			err := fmt.Errorf("Parsing Failed. Right parenthesis missing. %v", p.NextToken.Val)
+			return nil, err
+		}
+		return node, nil 
+	}    
+	
 	// TokenName incorporated - Puneet 
 	if (p.NextToken.Type_ == TokenNumber) {
 		p.Expect(TokenNumber)
@@ -152,7 +173,7 @@ func (p *Parser) termExpr() (*Node, error) {
 }
 
 // factExpr is the production for handling sum and subtraction.
-func (p *Parser) factExpr() (*Node, error) {
+func (p *Parser) factExpr() (*Node, error) {	
 	node, err := p.termExpr()
 	if err != nil {
 		return nil, err
@@ -198,7 +219,8 @@ func (p *Parser) start() (*Node, error) {
 		if p.NextToken.Type_ == TokenString {
 			p.Expect(TokenString)
 			node.right = &Node{left: nil, token: p.CurrentToken, right: nil}
-		} else if p.NextToken.Type_ == TokenNumber || p.NextToken.Type_ == TokenName {
+		} else if p.NextToken.Type_ == TokenNumber || p.NextToken.Type_ == TokenName ||
+			 p.NextToken.Type_ == TokenLpar || p.NextToken.Type_ == TokenRpar {
 			// recursive call to expression
 			node.right, err = p.factExpr()
 			if err != nil {
@@ -223,6 +245,7 @@ func ParseEngine(input string, lg bool) (*Node, error) {
 	// get the ast
 	ast, err := p.start()
 	if err != nil {
+		log.Info(err)
 		return nil, err
 	}
 	if lg {

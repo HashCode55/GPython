@@ -204,10 +204,14 @@ func consumeGen(l *Lexer) {
 		l.Emit(TokenEqual)
 	case ',':
 		l.Emit(TokenComma)
-	case '{':
+	case '(':
 		l.Emit(TokenLpar)
-	case '}':
+	case ')':
 		l.Emit(TokenRpar)
+	case '{':
+		l.Emit(TokenLcur)
+	case '}':
+		l.Emit(TokenRcur)
 	case '+':
 		l.Emit(TokenPlus)
 	case '-':
