@@ -7,6 +7,10 @@ func TestParseSuccess(t *testing.T) {
 	if err != nil {
 		t.Error("Parsing failed for fine syntax.")
 	}
+	_, err = ParseEngine("hello = 123 - 22 + ab / 2 * 6", false)
+	if err != nil {
+		t.Error("Parsing failed for fine syntax.")
+	}
 }
 
 func TestParserFail(t *testing.T) {

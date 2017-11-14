@@ -108,6 +108,7 @@ func (p *Parser) Expect(t TokenType) error {
 
 // atom is terminal production, returns a Node for AST
 func (p *Parser) atom() (*Node, error) {
+	// TokenName incorporated - Puneet 
 	if (p.NextToken.Type_ == TokenNumber) {
 		p.Expect(TokenNumber)
 	} else if (p.NextToken.Type_ == TokenName) {
@@ -193,6 +194,7 @@ func (p *Parser) start() (*Node, error) {
 		// Build the root as '=' and continue
 		node = &Node{left: node, token: p.CurrentToken, right: nil}
 		
+		// Else if Condition modified - Puneet 
 		if p.NextToken.Type_ == TokenString {
 			p.Expect(TokenString)
 			node.right = &Node{left: nil, token: p.CurrentToken, right: nil}
