@@ -8,11 +8,11 @@ package main
 // Remove local imports
 import (
 	"flag"
-	"github.com/HashCode55/GPython"
+	"github.com/puneets2811/GPython"
 )
 
 func main() {
 	boolPtr := flag.Bool("log", true, "Set it to true to log the details.")
 	flag.Parse()
-	gpython.ParseEngine("hello =  3 * 6  - ( 5 / 2 )", *boolPtr)
+	gpython.ParseEngine("hello = a (+) 2", *boolPtr)
 }

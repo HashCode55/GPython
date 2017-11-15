@@ -32,6 +32,81 @@ func TestParseString(t *testing.T) {
 	}
 }
 
+func TestParenthesis(t *testing.T) {
+	// TestParenthesisPass
+	_, err := ParseEngine("hello = ((((3))))", false)
+	if err != nil {
+		t.Error("Parser failed for fine syntax")
+	}
+
+	_, err = ParseEngine("hello = (3) + ((4))", false)
+	if err != nil {
+		t.Error("Parser failed for fine syntax")
+	}
+
+	_, err = ParseEngine("hello = (3) + (4 + (5 * 6 / (7))) * (9 - (6))", false)
+	if err != nil {
+		t.Error("Parser failed for fine syntax")
+	}
+
+
+	// TestParenthesisFail
+	_, err = ParseEngine("hello = ()", false)
+	if err == nil {
+		t.Error("Parser not failing for bad syntax")
+	}
+
+	_, err = ParseEngine("hello = 2 + 3 + ()", false)
+	if err == nil {
+		t.Error("Parser not failing for bad syntax")
+	}
+	
+	_, err = ParseEngine("() = a + 2", false)
+	if err == nil {
+		t.Error("Parser not failing for bad syntax")
+	}
+
+	_, err = ParseEngine("(hello) = a + 2", false)
+	if err == nil {
+		t.Error("Parser not failing for bad syntax")
+	}
+
+	_, err = ParseEngine("hello = (()(((()", false)
+	if err == nil {
+		t.Error("Parser not failing for bad syntax")
+	}
+
+	_, err = ParseEngine("hello = (2 + 3 + (a + 6)", false)
+	if err == nil {
+		t.Error("Parser not failing for bad syntax")
+	}
+
+	_, err = ParseEngine("hello = )", false)
+	if err == nil {
+		t.Error("Parser not failing for bad syntax")
+	}
+
+	_, err = ParseEngine("hello = )(", false)
+	if err == nil {
+		t.Error("Parser not failing for bad syntax")
+	}
+
+	_, err = ParseEngine("hello = (a + ) 2", false)
+	if err == nil {
+		t.Error("Parser not failing for bad syntax")
+	}
+
+	_, err = ParseEngine("hello = a (+) 2", false)
+	if err == nil {
+		t.Error("Parser not failing for bad syntax")
+	}
+
+	_, err = ParseEngine("hello = (a + 2)(b + 3)", false)
+	if err == nil {
+		t.Error("Parser not failing for bad syntax")
+	}
+}
+
 func TestAST(t *testing.T) {
 	astNode, _ := ParseEngine("hello = 123 - 22", false)
 	tokenList := astNode.Traverse(astNode)

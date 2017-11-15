@@ -6,4 +6,4 @@
 start := TokenName '=' TokenString | factExpr 
 factExpr := termExpr (TokenPlus | TokenMinus termExpr)*
 termExpr := atom (TokenStar | TokenSlash atom)*
-atom := TokenNumber | TokenName
+atom := TokenNumber | TokenName | TokenLpar factExpr TokenRpar
