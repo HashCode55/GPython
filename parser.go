@@ -45,11 +45,11 @@ type Node struct {
 // Traverse is a breadth first traversal over the AST for testing and debugging.
 func (ast *AST) Traverse(root *Node) []string {
 	tokenList := []string{}
-	queue := []*Node{}
+	queue := []*Node{}	
 	queue = append(queue, root)
 	for len(queue) != 0 {
 		// Pop from queue
-		node := queue[0]
+		node := queue[0]		
 		queue = queue[1:]
 		log.Info(node.token)
 		tokenList = append(tokenList, node.token.Val)
@@ -204,7 +204,7 @@ func (p *Parser) factExpr() (*Node, error) {
 // start is the starting production.
 // This is uglyyyyy.
 func (p *Parser) start() (*Node, error) {
-	var node *Node
+	var node *Node 
 	if p.Accept(TokenName) {
 		node = &Node{left: nil, token: p.CurrentToken, right: nil}
 		// Expect '=' token
@@ -230,6 +230,9 @@ func (p *Parser) start() (*Node, error) {
 			err := fmt.Errorf("Parsing Failed. Bad Syntax. %v", p.NextToken.Val)
 			return nil, err
 		}
+	} else {
+		err := fmt.Errorf("Parsing Failed. Bad Syntax. %v", p.NextToken.Val)
+		return nil, err
 	}
 	return node, nil
 }
@@ -250,6 +253,9 @@ func ParseEngine(input string, lg bool) (*Node, error) {
 	}
 	if lg {
 		log.Info("Traversing the AST... [debugging]")
+		if ast == nil {
+			return nil, nil
+		}
 		ast.Traverse(ast)
 	}
 	return ast, nil
