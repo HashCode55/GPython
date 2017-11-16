@@ -14,5 +14,5 @@ import (
 func main() {
 	boolPtr := flag.Bool("log", true, "Set it to true to log the details.")
 	flag.Parse()
-	gpython.ParseEngine("hello = a (+) 2", *boolPtr)
+	gpython.ParseEngine("hello = 2 * (3 - 5)", *boolPtr)
 }
