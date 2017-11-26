@@ -16,6 +16,7 @@ package gpython
 
 // Handle identifier startng with a number
 import (
+	"strconv"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 )
@@ -61,6 +62,35 @@ func (ast *AST) Traverse(root *Node) []string {
 		}
 	}
 	return tokenList
+}
+
+
+func (ast *AST) EvaluateTree(root *Node) float64 {
+	if root == nil {
+		return 0;
+	}
+
+	if root.left == nil && root.right == nil {
+		value, _ := strconv.ParseFloat(root.token.Val, 64)
+		return value
+	}
+
+	leftValue := ast.EvaluateTree(root.left)
+	rightValue := ast.EvaluateTree(root.right)
+
+	if root.token.Type_ == TokenPlus {
+		return leftValue + rightValue
+	}
+	if root.token.Type_ == TokenMinus {
+		return leftValue - rightValue
+	}
+	if root.token.Type_ == TokenStar {
+		return leftValue * rightValue
+	}
+	if root.token.Type_ == TokenSlash {
+		return leftValue / rightValue
+	}
+	return -1
 }
 
 // Advance modifies two pointers of the Parser construct.
@@ -258,5 +288,8 @@ func ParseEngine(input string, lg bool) (*Node, error) {
 		}
 		ast.Traverse(ast)
 	}
+
+	fmt.Println(ast.EvaluateTree(ast.right))
+
 	return ast, nil
 }
